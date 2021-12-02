@@ -1,6 +1,8 @@
 package com.example.guessthephrase
 
+import android.content.Context
 import android.content.DialogInterface
+import android.content.SharedPreferences
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Button
@@ -17,6 +19,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var rootLayout: ConstraintLayout
     private lateinit var phraseTV: TextView
     private lateinit var guessedLettersTV: TextView
+    private lateinit var highScoreTV: TextView
     private lateinit var phraseRecyclerView: RecyclerView
     private lateinit var userInputTextField: EditText
     private lateinit var guessBtn: Button
@@ -29,6 +32,11 @@ class MainActivity : AppCompatActivity() {
     private var guessedLetters = ""
     private var count = 0    // Used to count the number of times the user guessed
     private var guessPhrase = true
+    private var score = 0
+    private var highScore = 0
+
+    private lateinit var preferences: SharedPreferences
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,11 +45,17 @@ class MainActivity : AppCompatActivity() {
         rootLayout = findViewById(R.id.rootLayout)
         phraseTV = findViewById(R.id.phraseTV)
         guessedLettersTV = findViewById(R.id.guessedLettersTV)
+        highScoreTV = findViewById(R.id.highScoreTV)
         userInputTextField = findViewById(R.id.userInputTextField)
         guessBtn = findViewById(R.id.guessBtn)
         phraseRecyclerView = findViewById(R.id.phraseRecyclerView)
 
         entries = ArrayList()
+
+        phraseRecyclerView.adapter = PhraseAdapter(this, entries)
+        phraseRecyclerView.layoutManager = LinearLayoutManager(this)
+
+
 
         for(i in phrase.indices){  // To replace the text in the TextView with space if the phrase has a space and replace the letters with *
             if(phrase[i] == ' ') {
@@ -52,12 +66,15 @@ class MainActivity : AppCompatActivity() {
                 myPhrase += '*'
             }
         }
-        phraseRecyclerView.adapter = PhraseAdapter(this, entries)
-        phraseRecyclerView.layoutManager = LinearLayoutManager(this)
 
         guessBtn.setOnClickListener { addUserGuesses() }
 
         updateText()
+
+        preferences = this.getSharedPreferences(getString(R.string.preference_file_key), Context.MODE_PRIVATE)
+        highScore = preferences.getInt("HighScore", 0)
+
+        highScoreTV.text = "High Score: $highScore"
     }
 
     private fun addUserGuesses () {
@@ -66,6 +83,7 @@ class MainActivity : AppCompatActivity() {
         if(guessPhrase) {
             if(userPhrase == phrase) {
                 disableEntry()
+                updateScore()
                 showAlert("You win!\n\nPlay again?")
             } else {
                 entries.add("Wrong guess: $userPhrase")
@@ -98,6 +116,7 @@ class MainActivity : AppCompatActivity() {
         }
         if (myPhrase == phrase) {
             disableEntry()
+            updateScore()
             showAlert("You win!!\n\nWant to play again?")
         }
         if (guessedLetters.isEmpty()) {
@@ -120,7 +139,7 @@ class MainActivity : AppCompatActivity() {
             showAlert("You lose :(\n\nYou guessed $count times\n\nWant to play again?")
         }
         updateText()
-        phraseRecyclerView.scrollToPosition(entries.size - 1)  // To scroll to the last input the user entered  
+        phraseRecyclerView.scrollToPosition(entries.size - 1)  // To scroll to the last input the user entered
     }
 
     private fun updateText() {
@@ -131,6 +150,17 @@ class MainActivity : AppCompatActivity() {
             userInputTextField.hint = "Guess the full phrase"
         } else {
             userInputTextField.hint = "Guess a letter"
+        }
+    }
+
+    private fun updateScore() {
+        score = 10 - count
+        if(score >= highScore) {  // The highest score it can be is 10
+            highScore = score
+            with(preferences.edit()) {
+                putInt("HighScore", highScore )
+                apply()
+            }
         }
     }
 
